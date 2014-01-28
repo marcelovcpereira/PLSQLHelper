@@ -8,3 +8,4 @@ Este trabalho aborda a especificação e desenvolvimento de uma ferramenta de so
 
 This Project specifies and develops a software tool capable of providing database maintaince features in PL/SQL language. After research, it was verified that there’s no such tool or references material specifying how to build one.
 
+The PLSQLHelper.jar is executable, but you would need a database connection to enable the features on the software.
