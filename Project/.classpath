@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path=""/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/Rosana/Desktop/TG_MVCP_PPT_DOC_CODIGO/tg/xml-apis.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/Rosana/Desktop/TG_MVCP_PPT_DOC_CODIGO/tg/ant.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/Rosana/Desktop/TG_MVCP_PPT_DOC_CODIGO/tg/ojdbc6.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/Rosana/Desktop/TG_MVCP_PPT_DOC_CODIGO/tg/xalan.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/Rosana/Desktop/TG_MVCP_PPT_DOC_CODIGO/tg/xercesImpl.jar"/>
+	<classpathentry kind="output" path=""/>
+</classpath>

@@ -1,0 +1,1997 @@
+PACKAGE BODY PKG_CENSO IS
+
+  
+  
+ 
+
+
+  
+  
+
+  
+  
+
+  
+  
+
+  FUNCTION GET_DESC_BL_PERF( CODIGO IN INTEGER, PROG_FORM IN INTEGER )
+  RETURN VARCHAR2
+  IS
+    VAR_DESC VARCHAR2(100);
+  BEGIN
+
+     IF CODIGO != 0 THEN
+       SELECT BP.DS_BLOCO_PERF INTO VAR_DESC
+       FROM SIGA_BLOCO_PERFIL BP WHERE BP.CD_BLOCO_PERF = CODIGO;
+
+       RETURN VAR_DESC;
+     ELSE
+
+       SELECT A.DS_HABILITACAO INTO VAR_DESC
+       FROM AUX_CENSO_HABILIT_DEFAULT A
+       WHERE A.CD_PROGR_FORM = PROG_FORM;
+
+       RETURN VAR_DESC;
+     END IF;
+  END;
+  
+  FUNCTION GET_CD_HABLT_INEP( CODIGO IN INTEGER, PROG_FORM IN INTEGER )
+  RETURN INTEGER
+  IS
+    VAR_CD_INEP INTEGER;
+  BEGIN
+
+     IF CODIGO != 0 THEN
+       SELECT BP.CD_HABLT_INEP INTO VAR_CD_INEP
+       FROM SIGA_BLOCO_PERFIL BP WHERE BP.CD_BLOCO_PERF = CODIGO;
+
+       RETURN VAR_CD_INEP;
+     ELSE
+
+       SELECT A.CD_HABLT_INEP INTO VAR_CD_INEP
+       FROM AUX_CENSO_HABILIT_DEFAULT A
+       WHERE A.CD_PROGR_FORM = PROG_FORM;
+
+       RETURN VAR_CD_INEP;
+     END IF;
+  END;
+
+  FUNCTION FNC_ALUNOS_INGRESSANTES(P_ANO_SEMESTRE  IN VARCHAR2,
+                                  P_CURSO           IN INTEGER,
+                                  P_TIPO_INGRESSO   IN INTEGER,
+                                  P_TURNO           IN INTEGER,
+                                  P_SEXO            IN VARCHAR2 ) RETURN SYS_REFCURSOR AS
+
+
+
+    
+
+
+  INGR_REFCSR SYS_REFCURSOR;
+
+   V_SQL         VARCHAR2(32767);
+   TEMP          VARCHAR2(100);
+
+   P_ANO      VARCHAR2(4);
+   P_SEMESTRE VARCHAR2(1);
+
+
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM,DS_TP_INGRS,DS_BL_PERF,
+                     INTEGRAL_M,INTEGRAL_F,MANHA_M,MANHA_F,TARDE_M,TARDE_F,
+                     NOITE_M,NOITE_F,TARDE_NOITE_M,TARDE_NOITE_F,
+                     ESPECIAL_M,ESPECIAL_F,
+                     (INTEGRAL_M+INTEGRAL_F+MANHA_M+MANHA_F+TARDE_M+TARDE_F+
+                     NOITE_M+NOITE_F+TARDE_NOITE_M+TARDE_NOITE_F+
+                     ESPECIAL_M+ESPECIAL_F) TOTAL_CURSOS
+              FROM                     
+              (SELECT 
+              NVL(VW.NM_PROGR_FORM,''TOTAL - '' ||VW.DS_TP_INGRS) NM_PROGR_FORM,
+              VW.DS_TP_INGRS,
+              VW.DS_BL_PERF,
+              SUM((CASE WHEN VW.CD_TURNO = 1 AND VW.NM_SEXO = ''M''
+                         
+                         
+                         
+                         THEN 1 ELSE 0 END)) "INTEGRAL_M",
+              SUM((CASE WHEN VW.CD_TURNO = 1  AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "INTEGRAL_F",
+              SUM((CASE WHEN VW.CD_TURNO = 2  AND VW.NM_SEXO = ''M''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "MANHA_M",
+              SUM((CASE WHEN VW.CD_TURNO = 2  AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "MANHA_F",
+              SUM((CASE WHEN VW.CD_TURNO = 3 AND VW.NM_SEXO = ''M''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "TARDE_M",
+              SUM((CASE WHEN VW.CD_TURNO = 3 AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "TARDE_F",
+              SUM((CASE WHEN VW.CD_TURNO = 4 AND VW.NM_SEXO = ''M''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "NOITE_M",
+              SUM((CASE WHEN VW.CD_TURNO = 4 AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "NOITE_F",
+              SUM((CASE WHEN VW.CD_TURNO = 5 AND VW.NM_SEXO = ''M''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+              SUM((CASE WHEN VW.CD_TURNO = 5 AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+              SUM((CASE WHEN VW.CD_TURNO = 6 AND VW.NM_SEXO = ''M''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "ESPECIAL_M",
+              SUM((CASE WHEN VW.CD_TURNO = 6 AND VW.NM_SEXO = ''F''
+              
+              
+              
+              THEN 1 ELSE 0 END)) "ESPECIAL_F" 
+
+              FROM 
+                    (SELECT SV.NU_MATR_CURSO,
+                     PF.NM_PROGR_FORM NM_PROGR_FORM,
+                     TI.DS_TP_INGRS DS_TP_INGRS,
+                     TI.CD_TP_INGRS CD_TP_INGRS,
+                     (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF,
+                     ST.CD_TURNO,
+                     SP.NM_SEXO
+                          FROM SIGA_VINCULO            SV,
+                               SIGA_TURNO_VINCULO      STV,
+                               SIGA_PESSOA             SP,
+                               SIGA_PROGRAMA_FORMACAO  PF,
+                               SIGA_SITUACAO_ACADEMICA SA,
+                               SIGA_TIPO_INGRESSO      TI,
+                               SIGA_TURNO              ST,
+                               SIGA_ORGAO              SO,
+                             
+                               AUX_CENSO_RELATORIO              TC
+
+                         WHERE SA.CD_TP_SIT_ACAD IN (1,2,3,18,16)
+                         AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                         AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+                         AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+                         AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                         AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                              FROM SIGA_SITUACAO_ACADEMICA SA1
+                                             WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                               AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                               AND SA1.CD_TP_SIT_ACAD IN (1,2,3,18,16))
+                         AND SV.CD_TP_INGRS= TI.CD_TP_INGRS
+                         AND STV.CD_PERD_LETV = SA.CD_PERD_LETV
+                         AND SA.CD_PERD_LETV = ''
+                         AND STV.CD_TURNO = ST.CD_TURNO
+                         AND SV.NU_ANO_ADMIS = 
+                         AND SV.NU_SEMTR_ADMIS = 
+                         
+                         AND PF.CD_ORG = SO.CD_ORG
+                         AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+                         
+                         AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+                         AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+                         AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT
+
+                      
+              UNION
+              
+                      SELECT   SV.NU_MATR_CURSO,
+                               PF.NM_PROGR_FORM NM_PROGR_FORM,
+                               ''REINTEGRACAO'' DS_TP_INGRS,
+                               4 CD_TP_INGRS,
+                               (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF,
+                               ST.CD_TURNO,
+                               SP.NM_SEXO
+                          FROM SIGA_VINCULO            SV,
+                               SIGA_TURNO_VINCULO      STV,
+                               SIGA_PESSOA             SP,
+                               SIGA_PROGRAMA_FORMACAO  PF,
+                               SIGA_SITUACAO_ACADEMICA SA,
+                               SIGA_TIPO_INGRESSO      TI,
+                               SIGA_TURNO              ST,
+                               SIGA_ORGAO              SO,
+                             
+                               AUX_CENSO_RELATORIO              TC
+
+                         WHERE SA.CD_TP_SIT_ACAD = 18
+                         AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                         AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+                         AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+                         AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                         AND SV.CD_TP_INGRS= TI.CD_TP_INGRS
+                         AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV)
+                                               FROM SIGA_TURNO_VINCULO TV
+                                               WHERE TV.NU_MATR_CURSO = STV.NU_MATR_CURSO
+                                               AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV)
+                         AND SA.CD_PERD_LETV = ''
+                         AND STV.CD_TURNO = ST.CD_TURNO
+                         
+                         AND PF.CD_ORG = SO.CD_ORG
+                         AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+                         
+                         AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+                         AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+                         AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT) VW
+
+              GROUP BY GROUPING SETS ((VW.NM_PROGR_FORM,VW.DS_TP_INGRS,VW.DS_BL_PERF),VW.DS_TP_INGRS)
+              ORDER BY VW.NM_PROGR_FORM,VW.DS_TP_INGRS,VW.DS_BL_PERF)';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND VW.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TURNO IS NOT NULL THEN
+      TEMP  := 'AND VW.CD_TURNO = ' || P_TURNO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TIPO_INGRESSO IS NOT NULL THEN
+      TEMP  := 'AND VW.CD_TP_INGRS  = ' || P_TIPO_INGRESSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+
+    COMMIT;
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+    RETURN INGR_REFCSR;
+
+    CLOSE INGR_REFCSR;
+
+  END;
+
+
+
+
+
+FUNCTION FNC_ALUNOS_VINCULADOS(P_ANO_SEMESTRE       IN VARCHAR2,
+                                  P_CURSO           IN INTEGER,
+                                  P_TP_SIT_ACADEM   IN INTEGER,
+                                  P_TURNO           IN INTEGER,
+                                  P_SEXO            IN VARCHAR2 ) RETURN SYS_REFCURSOR AS
+
+
+
+    
+
+
+  INGR_REFCSR SYS_REFCURSOR;
+
+  V_SQL      VARCHAR2(32767);
+  TEMP       VARCHAR2(100);
+  P_ANO      VARCHAR2(4);
+  P_SEMESTRE VARCHAR2(1);
+
+
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM,DS_TP_SIT_ACAD,DS_BL_PERF,
+                     INTEGRAL_M,INTEGRAL_F,MANHA_M,MANHA_F,TARDE_M,TARDE_F,
+                     NOITE_M,NOITE_F,TARDE_NOITE_M,TARDE_NOITE_F,
+                     ESPECIAL_M,ESPECIAL_F,
+                     (INTEGRAL_M+INTEGRAL_F+MANHA_M+MANHA_F+TARDE_M+TARDE_F+
+                     NOITE_M+NOITE_F+TARDE_NOITE_M+TARDE_NOITE_F+
+                     ESPECIAL_M+ESPECIAL_F) TOTAL_CURSOS
+            FROM
+            (SELECT NVL(PF.NM_PROGR_FORM,''TOTAL - '' ||STSA.DS_TP_SIT_ACAD) NM_PROGR_FORM,
+                     STSA.DS_TP_SIT_ACAD DS_TP_SIT_ACAD,
+                     (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF,
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''M''
+               
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''M''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''F''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN ST.CD_TURNO = 3       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 3      AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''F''
+               
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 6    AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 6   AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO,
+                   
+                     AUX_CENSO_RELATORIO                    TC
+
+               WHERE
+                   SA.CD_TP_SIT_ACAD NOT IN (4,21)
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                    FROM SIGA_SITUACAO_ACADEMICA SA1
+                                   WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                     AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                     AND SA1.CD_TP_SIT_ACAD NOT IN (4,21))
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+               
+               
+               AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+               AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+               AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT
+               
+        GROUP BY GROUPING SETS ((PF.NM_PROGR_FORM,STSA.DS_TP_SIT_ACAD,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM))),STSA.DS_TP_SIT_ACAD)
+        ORDER BY PF.NM_PROGR_FORM,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),STSA.DS_TP_SIT_ACAD)';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND SP.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TURNO IS NOT NULL THEN
+      TEMP  := 'AND ST.CD_TURNO = ' || P_TURNO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TP_SIT_ACADEM IS NOT NULL THEN
+      TEMP  := 'AND STSA.CD_TP_SIT_ACAD  = ' || P_TP_SIT_ACADEM;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+
+    RETURN INGR_REFCSR;
+
+
+    CLOSE INGR_REFCSR;
+
+  END;
+
+
+
+
+
+
+
+  FUNCTION FNC_ALUNOS_CARGA_HORARIA(P_ANO_SEMESTRE       IN VARCHAR2,
+                                  P_CURSO           IN INTEGER,
+                                  P_TURNO           IN INTEGER,
+                                  P_SEXO            IN VARCHAR2
+                                  )RETURN SYS_REFCURSOR AS
+
+    
+
+  INGR_REFCSR SYS_REFCURSOR;
+
+   V_SQL      VARCHAR2(32767);
+   TEMP       VARCHAR2(100);
+   P_ANO      VARCHAR2(4);
+   P_SEMESTRE VARCHAR2(1);
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM,CARGA_HORR,DS_BL_PERF,
+                     INTEGRAL_M,INTEGRAL_F,MANHA_M,MANHA_F,TARDE_M,TARDE_F,
+                     NOITE_M,NOITE_F,TARDE_NOITE_M,TARDE_NOITE_F,
+                     ESPECIAL_M,ESPECIAL_F,
+                     (INTEGRAL_M+INTEGRAL_F+MANHA_M+MANHA_F+TARDE_M+TARDE_F+
+                     NOITE_M+NOITE_F+TARDE_NOITE_M+TARDE_NOITE_F+
+                     ESPECIAL_M+ESPECIAL_F) TOTAL_CURSOS
+ FROM
+(SELECT NVL(VW.NM_PROGR_FORM,''TOTAL - ''|| VW.CARGA_HORR) NM_PROGR_FORM,VW.CARGA_HORR,VW.DS_BL_PERF,
+            SUM((CASE WHEN VW.CD_TURNO = 1    AND VW.NM_SEXO = ''M''
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN VW.CD_TURNO = 1    AND VW.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN VW.CD_TURNO = 2       AND VW.NM_SEXO = ''M''
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN VW.CD_TURNO = 2       AND VW.NM_SEXO = ''F''
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN VW.CD_TURNO = 3       AND VW.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN VW.CD_TURNO = 3      AND VW.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN VW.CD_TURNO = 4       AND VW.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN VW.CD_TURNO = 4       AND VW.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN VW.CD_TURNO = 5 AND VW.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN VW.CD_TURNO = 5 AND VW.NM_SEXO = ''F''
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN VW.CD_TURNO = 6    AND VW.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN VW.CD_TURNO = 6   AND VW.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+
+
+            FROM
+            (SELECT PF.NM_PROGR_FORM NM_PROGR_FORM,
+             SV.NU_MATR_CURSO,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF ,ST.CD_TURNO,SP.NM_SEXO,
+             (CASE WHEN SUM(CC.NU_CARGA_HORR_TOT)/15  <= 6 THEN ''ATE 6H''
+                   WHEN SUM(CC.NU_CARGA_HORR_TOT)/15   > 6
+                    AND SUM(CC.NU_CARGA_HORR_TOT)/15 <= 12 THEN ''DE 07H A 12H''
+                   WHEN SUM(CC.NU_CARGA_HORR_TOT)/15  > 12
+                    AND SUM(CC.NU_CARGA_HORR_TOT)/15 <= 18 THEN ''DE 13H A 18H''
+                   WHEN SUM(CC.NU_CARGA_HORR_TOT)/15  > 18
+                    AND SUM(CC.NU_CARGA_HORR_TOT)/15 <= 24 THEN ''DE 19H A 24H''
+                   WHEN SUM(CC.NU_CARGA_HORR_TOT)/15  > 24
+                    AND SUM(CC.NU_CARGA_HORR_TOT)/15 <= 30 THEN ''DE 25H A 30H''
+                   WHEN  SUM(CC.NU_CARGA_HORR_TOT)/15 > 30 THEN ''MAIS DE 30H''
+             END) CARGA_HORR
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO,
+                     SIGA_MATRICULA_TURMA          MT,
+                     SIGA_ATIVIDADE_ACADEMICA      AA,
+                     SIGA_COMPONENTE_CURRICULAR    CC,
+                     SIGA_TURMA                    TU,
+
+                   
+                     AUX_CENSO_RELATORIO                    TC
+
+               WHERE
+                   SA.CD_PERD_LETV = ''
+               AND PF.CD_PROGR_FORM NOT IN (86,234,235)
+               AND SO.CD_TP_ORG IN (3,14)
+               AND AA.CD_PERD_LETV = ''
+               AND MT.NU_SIT_MATR_TURMA IN (1,31)
+               AND AA.CD_ATIV_ACAD = TU.CD_ATIV_ACAD
+               AND TU.CD_TURMA = MT.CD_TURMA
+               AND MT.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND AA.CD_COMPNT_CURR = CC.CD_COMPNT_CURR
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                    FROM SIGA_SITUACAO_ACADEMICA SA1
+                                   WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                     AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                     )
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               
+               AND PF.CD_ORG = SO.CD_ORG
+               
+               AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+               AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+               AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT
+               
+        GROUP BY (PF.NM_PROGR_FORM,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),SV.NU_MATR_CURSO,ST.CD_TURNO,SP.NM_SEXO)) VW
+GROUP BY GROUPING SETS ((VW.NM_PROGR_FORM,VW.CARGA_HORR,VW.DS_BL_PERF),VW.CARGA_HORR)
+ORDER BY VW.NM_PROGR_FORM,VW.DS_BL_PERF,VW.CARGA_HORR)';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND VW.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TURNO IS NOT NULL THEN
+      TEMP  := 'AND VW.CD_TURNO = ' || P_TURNO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+
+    RETURN INGR_REFCSR;
+
+    CLOSE INGR_REFCSR;
+
+  END;
+
+
+
+
+
+
+FUNCTION FNC_ALNS_NAO_MATR_VINC_PRD_ANT(P_ANO_SEMESTRE       IN VARCHAR2,
+                                  P_CURSO           IN INTEGER,
+                                  P_TURNO           IN INTEGER,
+                                  P_SEXO            IN VARCHAR2 ) RETURN SYS_REFCURSOR AS
+
+
+
+    
+
+
+  INGR_REFCSR SYS_REFCURSOR;
+
+   V_SQL      VARCHAR2(32767);
+   TEMP       VARCHAR2(100);
+   P_ANO      VARCHAR2(4);
+   P_SEMESTRE VARCHAR2(1);
+
+
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM,DS_TP_SIT_ACAD,DS_BL_PERF,
+                     INTEGRAL_M,INTEGRAL_F,MANHA_M,MANHA_F,TARDE_M,TARDE_F,
+                     NOITE_M,NOITE_F,TARDE_NOITE_M,TARDE_NOITE_F,
+                     ESPECIAL_M,ESPECIAL_F,
+                     (INTEGRAL_M+INTEGRAL_F+MANHA_M+MANHA_F+TARDE_M+TARDE_F+
+                     NOITE_M+NOITE_F+TARDE_NOITE_M+TARDE_NOITE_F+
+                     ESPECIAL_M+ESPECIAL_F) TOTAL_CURSOS
+            FROM
+            (SELECT NVL(PF.NM_PROGR_FORM,''TOTAL - '' ||NVL(TSA.DS_TP_SIT_ACAD,''INDEFINIDO'')) NM_PROGR_FORM,
+                     NVL(TSA.DS_TP_SIT_ACAD,''INDEFINIDO'') DS_TP_SIT_ACAD,
+                     (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF,
+            SUM((CASE WHEN T.CD_TURNO = 1    AND P.NM_SEXO = ''M''
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN T.CD_TURNO = 1    AND P.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN T.CD_TURNO = 2       AND P.NM_SEXO = ''M''
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN T.CD_TURNO = 2       AND P.NM_SEXO = ''F''
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN T.CD_TURNO = 3       AND P.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN T.CD_TURNO = 3      AND P.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN T.CD_TURNO = 4       AND P.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN T.CD_TURNO = 4       AND P.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN T.CD_TURNO = 5 AND P.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN T.CD_TURNO = 5 AND P.NM_SEXO = ''F''
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN T.CD_TURNO = 6    AND P.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN T.CD_TURNO = 6   AND P.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F" FROM
+             SIGA_VINCULO V,
+             SIGA_PESSOA P,
+             SIGA_SITUACAO_ACADEMICA SA3,
+             SIGA_PROGRAMA_FORMACAO PF,
+             SIGA_TURNO T,
+             SIGA_PERIODO_LETIVO PL,
+             SIGA_TIPO_SITUACAO_ACADEMICA TSA,
+             SIGA_TURNO_VINCULO TV,
+             (SELECT SA.NU_MATR_CURSO,
+             SA.CD_TP_SIT_ACAD
+             FROM SIGA_SITUACAO_ACADEMICA SA
+             WHERE (SA.CD_PERD_LETV = ''
+             AND (SA.DT_DEF_SIT  = (SELECT MAX (SA2.DT_DEF_SIT)
+                 FROM SIGA_SITUACAO_ACADEMICA SA2
+                 WHERE (SA2.NU_MATR_CURSO = SA.NU_MATR_CURSO)
+                 AND (SA2.CD_PERD_LETV = SA.CD_PERD_LETV)
+                                    )
+                  )
+              )SA,
+              
+              AUX_CENSO_RELATORIO TC
+
+              WHERE
+              (V.NM_CPF_PESS = P.NM_CPF_PESS)
+              
+              AND (PL.CD_PERD_LETV = ''
+              AND (PF.CD_PROGR_FORM = V.CD_PROGR_FORM)
+              AND (PF.CD_AREA_ACAD <> 0)
+              AND (T.CD_TURNO = TV.CD_TURNO
+              AND TV.NU_MATR_CURSO = V.NU_MATR_CURSO
+              AND TV.CD_PERD_LETV = ( SELECT MAX(TV2.CD_PERD_LETV)
+                                      FROM SIGA_TURNO_VINCULO TV2
+                                      WHERE TV2.NU_MATR_CURSO = TV.NU_MATR_CURSO
+                                    )
+                  )
+              AND (PF.CD_NIVEL IN (1))
+              AND (SA.NU_MATR_CURSO(+) = V.NU_MATR_CURSO)
+              AND (TSA.CD_TP_SIT_ACAD(+) = SA.CD_TP_SIT_ACAD)
+              AND (SA.CD_TP_SIT_ACAD NOT IN (1,2,3,4,20,21) OR SA.CD_TP_SIT_ACAD IS NULL)
+              AND (SA3.NU_MATR_CURSO = V.NU_MATR_CURSO)
+              AND (SA3.CD_TP_SIT_ACAD IN (1,2,3,4,20,21) )
+              AND (SA3.DT_DEF_SIT = (SELECT MAX (SA4.DT_DEF_SIT)
+                                            FROM SIGA_SITUACAO_ACADEMICA SA4
+                                            WHERE (SA4.NU_MATR_CURSO = V.NU_MATR_CURSO)
+                                            AND (SA4.CD_PERD_LETV = (SELECT MAX (PL2.CD_PERD_LETV)
+                                                                            FROM SIGA_PERIODO_LETIVO PL2
+                                                                            WHERE (PL2.CD_PERD_LETV < PL.CD_PERD_LETV)
+                                                                            AND PL2.TP_PERD_LETV = ''REGULAR''
+                                                                    )
+                                                )
+                                     )
+                   )
+               AND (PF.CD_PROGR_FORM = V.CD_PROGR_FORM)
+               AND (PF.CD_AREA_ACAD <> 0)
+                 AND TC.NU_MATR_CURSO(+) = SA3.NU_MATR_CURSO
+                 AND TC.CD_TP_SIT_ACAD(+)= SA3.CD_TP_SIT_ACAD
+                 AND TC.DT_DEF_SIT(+) = SA3.DT_DEF_SIT
+                 
+                 GROUP BY  GROUPING SETS(
+                          (PF.NM_PROGR_FORM,
+                          (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),
+                          NVL(TSA.DS_TP_SIT_ACAD,''INDEFINIDO'')),
+                          NVL(TSA.DS_TP_SIT_ACAD,''INDEFINIDO''))
+
+                  ORDER BY PF.NM_PROGR_FORM,
+                           (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),
+                           NVL(TSA.DS_TP_SIT_ACAD,''INDEFINIDO''))';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND SP.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TURNO IS NOT NULL THEN
+      TEMP  := 'AND T.CD_TURNO = ' || P_TURNO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+    RETURN INGR_REFCSR;
+
+    CLOSE INGR_REFCSR;
+
+  END;
+
+
+
+
+
+ FUNCTION FNC_ALUNOS_VINCULADOS_IDADE (P_ANO_SEMESTRE       IN VARCHAR2,
+                                       P_CURSO           IN INTEGER,
+                                       P_TP_SIT_ACADEM   IN INTEGER,
+                                       P_SEXO            IN VARCHAR2) RETURN SYS_REFCURSOR AS
+ INGR_REFCSR SYS_REFCURSOR;
+
+   V_SQL          VARCHAR2(32767);
+   TEMP           VARCHAR2(100);
+   P_ANO      VARCHAR2(4);
+   P_SEMESTRE VARCHAR2(1);
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM,DS_TP_SIT_ACAD,DS_BL_PERF,
+                     "18_M","18_F", "19_24_M","19_24_F", "25_29_M","25_29_F",
+                     "30_34_M","30_34_F", "35_39_M","35_39_F", "40_44_M", "40_44_F",
+                     "45_49_M","45_49_F", "50_54_M","50_54_F", "55_59_M","55_59_F",
+                     "60_64_M","60_64_F", "65_M","65_F",
+                     ("18_M"+"18_F"+ "19_24_M"+"19_24_F"+ "25_29_M"+"25_29_F"+
+                     "30_34_M"+"30_34_F"+ "35_39_M"+"35_39_F"+ "40_44_M"+ "40_44_F"+
+                     "45_49_M"+"45_49_F"+ "50_54_M"+"50_54_F"+ "55_59_M"+"55_59_F"+
+                     "60_64_M"+"60_64_F"+ "65_M"+"65_F") TOTAL
+            FROM
+            (SELECT NVL(PF.NM_PROGR_FORM,''TOTAL - '' ||STSA.DS_TP_SIT_ACAD) NM_PROGR_FORM,
+                     STSA.DS_TP_SIT_ACAD DS_TP_SIT_ACAD,
+                     (PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) DS_BL_PERF,
+            SUM((CASE WHEN
+                       TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 18 AND SP.NM_SEXO = ''M''
+               
+               
+               THEN 1 ELSE 0 END)) "18_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 18
+                           AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "18_F",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 19
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 24
+                        AND SP.NM_SEXO = ''M''
+               
+               
+              THEN 1 ELSE 0 END)) "19_24_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 19
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 24
+                             AND SP.NM_SEXO = ''F''
+               
+               
+              THEN 1 ELSE 0 END)) "19_24_F",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 25
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 29
+                       AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "25_29_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 25
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 29
+                            AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "25_29_F",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 30
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 34
+                             AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "30_34_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 30
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 34
+                             AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "30_34_F",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 35
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 39
+                       AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "35_39_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 35
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 39
+                       AND SP.NM_SEXO = ''F''
+               
+               
+
+             THEN 1 ELSE 0 END)) "35_39_F",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 40
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 44
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "40_44_M",
+            SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 40
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 44
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "40_44_F",
+             SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 45
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 49
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "45_49_M",
+                         SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 45
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 49
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "45_49_F",
+             SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 50
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 54
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "50_54_M",
+                         SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 50
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 54
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "50_54_F",
+             SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 55
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 59
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "55_59_M",
+                         SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 55
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 59
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "55_59_F",
+             SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 60
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 64
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "60_64_M",
+                         SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 60
+                      AND TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) <= 64
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "60_64_F",
+             SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 65
+                          AND SP.NM_SEXO = ''M''
+               
+               
+             THEN 1 ELSE 0 END)) "65_M",
+                         SUM((CASE WHEN TRUNC(MONTHS_BETWEEN(SYSDATE,SP.DT_NASC)/12) >= 65
+                         AND SP.NM_SEXO = ''F''
+               
+               
+             THEN 1 ELSE 0 END)) "65_F",
+             0 "INDEFINIDA"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO,
+                   
+                     AUX_CENSO_RELATORIO            TC
+
+               WHERE
+                  
+                   STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                    FROM SIGA_SITUACAO_ACADEMICA SA1
+                                   WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                     AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                     )
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+               
+               
+               AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+               AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+               AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT
+               
+        GROUP BY GROUPING SETS ((PF.NM_PROGR_FORM,STSA.DS_TP_SIT_ACAD,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM))),STSA.DS_TP_SIT_ACAD)
+        ORDER BY PF.NM_PROGR_FORM,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),STSA.DS_TP_SIT_ACAD)';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND SP.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TP_SIT_ACADEM IS NOT NULL THEN
+      TEMP  := 'AND STSA.CD_TP_SIT_ACAD  = ' || P_TP_SIT_ACADEM;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+    RETURN INGR_REFCSR;
+
+   CLOSE INGR_REFCSR;
+
+ END;
+
+
+
+
+
+
+
+
+
+
+
+  FUNCTION FNC_ALUNOS_INGRESSANTES_IDADE(P_ANO_SEMESTRE       IN VARCHAR2,
+                                          P_CURSO              IN VARCHAR2,
+                                          P_TIPO_INGRESSO      IN VARCHAR2,
+                                          P_SEXO               IN VARCHAR2
+                                          ) RETURN SYS_REFCURSOR AS
+  P_INGR_IDAD_REFCSR SYS_REFCURSOR;
+
+  V_SQL      VARCHAR2(32767);
+  V_TEMP     VARCHAR2(100);
+  P_ANO      VARCHAR2(4);
+  P_SEMESTRE VARCHAR2(1);
+
+BEGIN
+
+  V_SQL := 'SELECT
+                  "NM_PROGR_FORM","TP_INGRESSO","DS_BL_PERF","18_M","18_F","19_24_M","19_24_F",
+                  "25_29_M", "25_29_F","30_34_M","30_34_F",
+                  "35_39_M","35_39_F","40_44_M","40_44_F",
+                  "45_49_M","45_49_F","50_54_M","50_54_F",
+                  "55_59_M","55_59_F","60_64_M","60_64_F",
+                  "65_M","65_F",
+                  ("18_M"+"18_F"+"19_24_M"+"19_24_F"+
+                  "25_29_M"+ "25_29_F"+"30_34_M"+"30_34_F"+
+                  "35_39_M"+"35_39_F"+"40_44_M"+"40_44_F"+
+                  "45_49_M"+"45_49_F"+"50_54_M"+"50_54_F"+
+                  "55_59_M"+"55_59_F"+"60_64_M"+"60_64_F"+
+                  "65_M"+"65_F"
+                  ) "TOTAL"
+            FROM (SELECT NVL(PF.NM_PROGR_FORM,''TOTAL - '' ||TI.DS_TP_INGRS) "NM_PROGR_FORM",TI.DS_TP_INGRS "TP_INGRESSO",(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)) "DS_BL_PERF",
+              SUM((CASE
+                 WHEN (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 18
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "18_M",
+              SUM((CASE
+                  WHEN (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 18
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "18_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 19)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 24)
+                 AND SP.NM_SEXO =''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "19_24_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 19)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 24)
+                 AND SP.NM_SEXO =''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "19_24_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 25)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 29)
+                 AND SP.NM_SEXO =''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "25_29_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 25)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 29)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "25_29_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 30)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 34)
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "30_34_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 30)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 34)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "30_34_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 35)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 39)
+                 AND SP.NM_SEXO =''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "35_39_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 35)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 39)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "35_39_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 40)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 44)
+                 AND SP.NM_SEXO =''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "40_44_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 40)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 44)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "40_44_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 45)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 49)
+                 AND SP.NM_SEXO =''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "45_49_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 45)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 49)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "45_49_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 50)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 54)
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "50_54_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 50)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 54)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "50_54_F",
+
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 55)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 59)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "55_59_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 55)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 59)
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "55_59_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 60)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 64)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "60_64_F",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 60)
+                 AND  (FLOOR((SYSDATE - SP.DT_NASC) / 365) <= 64)
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "60_64_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 65)
+                 AND SP.NM_SEXO = ''M''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "65_M",
+              SUM((CASE
+                 WHEN ((FLOOR((SYSDATE - SP.DT_NASC) / 365) >= 65)
+                 AND SP.NM_SEXO = ''F''
+                 
+                 
+                 ) THEN 1 ELSE 0 END)) "65_F"
+
+                FROM SIGA_VINCULO            SV,
+                     SIGA_TURNO_VINCULO      STV,
+                     SIGA_PESSOA             SP,
+                     SIGA_PROGRAMA_FORMACAO  PF,
+                     SIGA_SITUACAO_ACADEMICA SA,
+                     SIGA_TIPO_INGRESSO      TI,
+                     SIGA_TURNO              ST,
+                     SIGA_ORGAO              SO,
+                   
+                     AUX_CENSO_RELATORIO     TC
+
+               WHERE
+               STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                    FROM SIGA_SITUACAO_ACADEMICA SA1
+                                   WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                     AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                     )
+               AND SV.CD_TP_INGRS= TI.CD_TP_INGRS
+               AND STV.CD_PERD_LETV = ''
+               AND STV.CD_PERD_LETV = SA.CD_PERD_LETV
+               AND SA.CD_PERD_LETV = ''
+               AND STV.CD_TURNO = ST.CD_TURNO
+               AND SV.NU_ANO_ADMIS = 
+               AND SV.NU_SEMTR_ADMIS = 
+               
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+               
+               
+               AND TC.NU_MATR_CURSO(+) = SA.NU_MATR_CURSO
+               AND TC.CD_TP_SIT_ACAD(+)= SA.CD_TP_SIT_ACAD
+               AND TC.DT_DEF_SIT(+) = SA.DT_DEF_SIT
+               
+ GROUP BY GROUPING SETS ((PF.NM_PROGR_FORM,TI.DS_TP_INGRS,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM))),TI.DS_TP_INGRS)
+ ORDER BY PF.NM_PROGR_FORM,(PKG_CENSO.GET_DESC_BL_PERF(TC.CD_BLOCO_PERF,PF.CD_PROGR_FORM)),TI.DS_TP_INGRS)';
+
+  
+  IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+    P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+    P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+    V_SQL := REPLACE(V_SQL, '
+    V_SQL := REPLACE(V_SQL, '
+    V_SQL := REPLACE(V_SQL, '
+
+  END IF;
+
+
+  
+  IF P_CURSO IS NOT NULL THEN
+    V_TEMP  := 'AND PF.CD_PROGR_FORM = ''' || P_CURSO || '''';
+    V_SQL := REPLACE(V_SQL, '
+  END IF;
+  
+  IF P_TIPO_INGRESSO IS NOT NULL THEN
+    V_TEMP  := 'AND TI.CD_TP_INGRS = ''' || P_TIPO_INGRESSO || '''';
+    V_SQL := REPLACE(V_SQL, '
+  END IF;
+  
+  IF P_SEXO IS NOT NULL THEN
+    V_TEMP  := 'AND SP.NM_SEXO = ''' || P_SEXO || '''';
+    V_SQL := REPLACE(V_SQL, '
+  END IF;
+
+
+  OPEN P_INGR_IDAD_REFCSR FOR V_SQL;
+
+
+  RETURN P_INGR_IDAD_REFCSR;
+
+  CLOSE P_INGR_IDAD_REFCSR;
+
+END;
+
+
+
+
+
+  FUNCTION FNC_REL_SIT_ACAD_MES (P_SEMESTRE VARCHAR2) RETURN SYS_REFCURSOR AS
+
+  RETURN SYS_REFCURSOR;
+
+  C_RECORD SYS_REFCURSOR;
+
+
+  BEGIN
+
+
+  OPEN C_RECORD FOR   SELECT SA.CD_PERD_LETV AS PERIODO_LETIVO,
+             PF.NM_PROGR_FORM AS CURSO,
+             TSA.DS_TP_SIT_ACAD AS SITUACAO_ACADEMICA,
+             R.ANO_MES AS MES_ANO,
+             P.NM_SEXO AS SEXO,
+             COUNT(*) AS QTDE
+        FROM SIGA_SITUACAO_ACADEMICA SA,
+             SIGA_PROGRAMA_FORMACAO PF,
+             SIGA_TIPO_SITUACAO_ACADEMICA TSA,
+             SIGA_VINCULO V,
+             SIGA_PESSOA P,
+           (SELECT DISTINCT SA1.CD_PERD_LETV AS PERIODO,
+           PF.NM_PROGR_FORM AS NOME_CURSO,
+           PF.CD_PROGR_FORM AS COD_CURSO,
+           TO_CHAR(SA1.DT_DEF_SIT,'YYYY/MM') AS ANO_MES
+      FROM SIGA_SITUACAO_ACADEMICA SA1,
+           SIGA_PROGRAMA_FORMACAO PF
+     WHERE SA1.CD_PERD_LETV IN (P_SEMESTRE) 
+       AND PF.CD_NIVEL=1
+       AND PF.CD_PROGR_FORM NOT IN (86,234,235)
+       AND PF.NM_SIT_PROGR_FORM='ATIVO')R
+       WHERE SA.CD_PERD_LETV = P_SEMESTRE 
+         AND SA.CD_PERD_LETV=R.PERIODO
+         AND SA.NU_MATR_CURSO=V.NU_MATR_CURSO
+         AND SA.CD_TP_SIT_ACAD=TSA.CD_TP_SIT_ACAD
+         AND PF.CD_PROGR_FORM=R.COD_CURSO
+         AND V.CD_PROGR_FORM=PF.CD_PROGR_FORM
+         AND V.NM_CPF_PESS=P.NM_CPF_PESS
+         AND TO_CHAR(SA.DT_DEF_SIT,'YYYY/MM')<=R.ANO_MES
+    GROUP BY SA.CD_PERD_LETV,
+             PF.NM_PROGR_FORM,
+             TSA.DS_TP_SIT_ACAD,
+             R.ANO_MES,
+             P.NM_SEXO
+    ORDER BY SA.CD_PERD_LETV,
+             PF.NM_PROGR_FORM,
+             R.ANO_MES,
+             TSA.DS_TP_SIT_ACAD,
+             P.NM_SEXO ;
+
+
+     RETURN C_RECORD;
+
+  CLOSE C_RECORD;
+
+  END;
+
+
+
+
+
+
+
+  FUNCTION FNC_CONS_GERAL (P_SEMESTRE VARCHAR2) RETURN SYS_REFCURSOR AS
+
+  RETURN SYS_REFCURSOR;
+
+  C_RECORD SYS_REFCURSOR;
+
+
+  BEGIN
+
+     OPEN C_RECORD FOR SELECT SA.CD_PERD_LETV AS PERIODO_LETIVO,
+			TSA.DS_TP_SIT_ACAD AS SITUACAO_ACADEMICA,
+			R.ANO_MES AS MES_ANO,
+			P.NM_SEXO AS SEXO,
+			COUNT(*) AS QTDE
+			FROM SIGA_SITUACAO_ACADEMICA SA,
+			SIGA_PROGRAMA_FORMACAO PF,
+			SIGA_TIPO_SITUACAO_ACADEMICA TSA,
+			SIGA_VINCULO V,
+			SIGA_PESSOA P,
+			(SELECT SA1.CD_PERD_LETV AS PERIODO,
+			TO_CHAR(SA1.DT_DEF_SIT,'YYYY/MM') AS ANO_MES
+			FROM SIGA_SITUACAO_ACADEMICA SA1,
+			SIGA_PROGRAMA_FORMACAO PF
+			WHERE SA1.CD_PERD_LETV = P_SEMESTRE
+			AND PF.CD_NIVEL=1
+			AND PF.CD_PROGR_FORM NOT IN (86,234,235)
+			AND PF.NM_SIT_PROGR_FORM='ATIVO'
+			GROUP BY SA1.CD_PERD_LETV,
+			TO_CHAR(SA1.DT_DEF_SIT,'YYYY/MM')
+			ORDER BY SA1.CD_PERD_LETV,
+			TO_CHAR(SA1.DT_DEF_SIT,'YYYY/MM')) R
+			WHERE SA.CD_PERD_LETV = P_SEMESTRE
+			AND PF.CD_NIVEL=1
+			AND PF.CD_PROGR_FORM NOT IN (86,234,235)
+			AND PF.NM_SIT_PROGR_FORM='ATIVO'
+      AND SA.NU_MATR_CURSO=V.NU_MATR_CURSO
+			AND SA.CD_TP_SIT_ACAD=TSA.CD_TP_SIT_ACAD
+			AND V.CD_PROGR_FORM=PF.CD_PROGR_FORM
+			AND V.NM_CPF_PESS=P.NM_CPF_PESS
+			AND SA.CD_PERD_LETV=R.PERIODO
+			AND TO_CHAR(SA.DT_DEF_SIT,'YYYY/MM')<=R.ANO_MES
+			GROUP BY SA.CD_PERD_LETV,
+			TSA.DS_TP_SIT_ACAD,
+			R.ANO_MES,
+			P.NM_SEXO
+			ORDER BY SA.CD_PERD_LETV,
+			R.ANO_MES,
+			TSA.DS_TP_SIT_ACAD,
+			P.NM_SEXO;
+
+
+
+     RETURN C_RECORD;
+
+
+  CLOSE C_RECORD;
+
+  END;
+
+
+
+
+
+FUNCTION FNC_ALUNOS_FORMADOS(P_ANO_SEMESTRE       IN VARCHAR2,
+                                  P_CURSO           IN INTEGER,
+                                  P_TP_SIT_ACADEM   IN INTEGER,
+                                  P_TURNO           IN INTEGER,
+                                  P_SEXO            IN VARCHAR2 ) RETURN SYS_REFCURSOR AS
+
+
+
+    
+
+
+  INGR_REFCSR SYS_REFCURSOR;
+
+  V_SQL      VARCHAR2(32767);
+  TEMP       VARCHAR2(100);
+  P_ANO      VARCHAR2(4);
+  P_SEMESTRE VARCHAR2(1);
+
+
+
+
+  BEGIN
+
+    
+    V_SQL := 'SELECT NM_PROGR_FORM, REPLACE(DS_TP_SIT_ACAD, ''X'','''') DS_TP_SIT_ACAD,DS_BL_PERF,
+                     INTEGRAL_M,INTEGRAL_F,MANHA_M,MANHA_F,TARDE_M,TARDE_F,
+                     NOITE_M,NOITE_F,TARDE_NOITE_M,TARDE_NOITE_F,
+                     ESPECIAL_M,ESPECIAL_F,
+                     (INTEGRAL_M+INTEGRAL_F+MANHA_M+MANHA_F+TARDE_M+TARDE_F+
+                     NOITE_M+NOITE_F+TARDE_NOITE_M+TARDE_NOITE_F+
+                     ESPECIAL_M+ESPECIAL_F) TOTAL_CURSOS FROM 
+
+((SELECT PF.NM_PROGR_FORM NM_PROGR_FORM,PF.NM_PROGR_FORM NM_PROGR_FORM_ORD,
+                     STSA.DS_TP_SIT_ACAD DS_TP_SIT_ACAD,
+                     NULL DS_BL_PERF,
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''M''
+               
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''M''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''F''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN ST.CD_TURNO = 3       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 3      AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''F''
+               
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 6    AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 6   AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO
+                   
+               WHERE SA.CD_TP_SIT_ACAD IN (4,21)
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND NOT EXISTS (SELECT 1 
+                                 FROM SIGA_BLOCO_PERF_SIT_ACADEMICA BPSA
+                               WHERE  BPSA.NU_MATR_CURSO = SA.NU_MATR_CURSO )
+               
+               AND NOT EXISTS ( 
+            	    SELECT 1  
+            	    FROM SIGA_PROGRAMA_FORMACAO PF2, 
+            	    SIGA_CURRICULO C, 
+            	    SIGA_PERFIL P2, 
+            	    SIGA_BLOCO_PERFIL BP, 
+            	    SIGA_BL_PERF_PERF BPP 
+            	    WHERE C.CD_PROGR_FORM = PF2.CD_PROGR_FORM 
+            	    AND P2.CD_CURR = C.CD_CURR 
+            	    AND P2.CD_PERF = BPP.CD_PERF 
+            	    AND BPP.CD_BLOCO_PERF = BP.CD_BLOCO_PERF 
+            	    AND BP.TP_BLOCO_PERF IN (4,7,8,9) 
+                  AND PF2.CD_PROGR_FORM = PF.CD_PROGR_FORM
+            	)
+               
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+       GROUP BY (PF.NM_PROGR_FORM,STSA.DS_TP_SIT_ACAD))
+
+
+UNION       
+
+
+
+
+(SELECT PF.NM_PROGR_FORM NM_PROGR_FORM,PF.NM_PROGR_FORM NM_PROGR_FORM_ORD,
+                     ''XTOTAL DO CURSO'' DS_TP_SIT_ACAD,
+                     NULL DS_BL_PERF,
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''M''
+               
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''M''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''F''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN ST.CD_TURNO = 3       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 3      AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''F''
+               
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 6    AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 6   AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO
+                   
+               WHERE SA.CD_TP_SIT_ACAD IN (4,21)
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SA.DT_DEF_SIT=(SELECT MAX(SA1.DT_DEF_SIT)
+                                    FROM SIGA_SITUACAO_ACADEMICA SA1
+                                   WHERE SA1.NU_MATR_CURSO=SA.NU_MATR_CURSO
+                                     AND SA1.CD_PERD_LETV=SA.CD_PERD_LETV
+                                     AND SA1.CD_TP_SIT_ACAD IN (4, 21))
+               AND NOT EXISTS (SELECT 1 
+                                 FROM SIGA_BLOCO_PERF_SIT_ACADEMICA BPSA
+                               WHERE  BPSA.NU_MATR_CURSO = SA.NU_MATR_CURSO )
+               
+               AND  NOT EXISTS ( 
+            	    SELECT 1  
+            	    FROM SIGA_PROGRAMA_FORMACAO PF2, 
+            	    SIGA_CURRICULO C, 
+            	    SIGA_PERFIL P2, 
+            	    SIGA_BLOCO_PERFIL BP, 
+            	    SIGA_BL_PERF_PERF BPP 
+            	    WHERE C.CD_PROGR_FORM = PF2.CD_PROGR_FORM 
+            	    AND P2.CD_CURR = C.CD_CURR 
+            	    AND P2.CD_PERF = BPP.CD_PERF 
+            	    AND BPP.CD_BLOCO_PERF = BP.CD_BLOCO_PERF 
+            	    AND BP.TP_BLOCO_PERF IN (4,7,8,9) 
+                  AND PF2.CD_PROGR_FORM = PF.CD_PROGR_FORM
+            	)
+              
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+       GROUP BY (PF.NM_PROGR_FORM))
+       
+UNION
+
+
+
+(SELECT NVL(PF.NM_PROGR_FORM,''TOTAL - '' ||STSA.DS_TP_SIT_ACAD) NM_PROGR_FORM,PF.NM_PROGR_FORM NM_PROGR_FORM_ORD,
+                     STSA.DS_TP_SIT_ACAD DS_TP_SIT_ACAD,
+                     BP.DS_BLOCO_PERF DS_BL_PERF,
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''M''
+               
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''M''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''F''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN ST.CD_TURNO = 3       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 3      AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''F''
+               
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 6    AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 6   AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO,
+                   
+                     SIGA_BLOCO_PERF_SIT_ACADEMICA BPSA,
+                     SIGA_BLOCO_PERFIL BP 
+               WHERE SA.CD_TP_SIT_ACAD IN (4,21)
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+               AND BPSA.NU_MATR_CURSO = SA.NU_MATR_CURSO
+               AND BPSA.CD_TP_SIT_ACAD= SA.CD_TP_SIT_ACAD
+               AND BPSA.DT_DEF_SIT = SA.DT_DEF_SIT
+               AND BPSA.CD_BLOCO_PERF = BP.CD_BLOCO_PERF
+       GROUP BY (PF.NM_PROGR_FORM,STSA.DS_TP_SIT_ACAD,BP.DS_BLOCO_PERF) )
+       
+
+UNION
+
+
+
+
+(SELECT PF.NM_PROGR_FORM NM_PROGR_FORM,PF.NM_PROGR_FORM NM_PROGR_FORM_ORD,
+                     ''TOTAL DA HABILITAC?O'' DS_TP_SIT_ACAD,
+                     BP.DS_BLOCO_PERF DS_BL_PERF,
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''M''
+               
+               
+               
+               THEN 1 ELSE 0 END)) "INTEGRAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 1    AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "INTEGRAL_F",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''M''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_M",
+            SUM((CASE WHEN ST.CD_TURNO = 2       AND SP.NM_SEXO = ''F''
+               
+               
+               
+              THEN 1 ELSE 0 END)) "MANHA_F",
+            SUM((CASE WHEN ST.CD_TURNO = 3       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 3      AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 4       AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_M",
+            SUM((CASE WHEN ST.CD_TURNO = 5 AND SP.NM_SEXO = ''F''
+               
+               
+               
+
+             THEN 1 ELSE 0 END)) "TARDE_NOITE_F",
+            SUM((CASE WHEN ST.CD_TURNO = 6    AND SP.NM_SEXO = ''M''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_M",
+            SUM((CASE WHEN ST.CD_TURNO = 6   AND SP.NM_SEXO = ''F''
+               
+               
+               
+             THEN 1 ELSE 0 END)) "ESPECIAL_F"
+                FROM SIGA_VINCULO                  SV,
+                     SIGA_TURNO_VINCULO            STV,
+                     SIGA_PESSOA                   SP,
+                     SIGA_PROGRAMA_FORMACAO        PF,
+                     SIGA_SITUACAO_ACADEMICA       SA,
+                     SIGA_TIPO_SITUACAO_ACADEMICA  STSA,
+                     SIGA_TURNO                    ST,
+                     SIGA_ORGAO                    SO,
+                   
+                     SIGA_BLOCO_PERF_SIT_ACADEMICA BPSA,
+                     SIGA_BLOCO_PERFIL BP 
+               WHERE SA.CD_TP_SIT_ACAD IN (4,21)
+               AND STV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+               AND SP.NM_CPF_PESS = SV.NM_CPF_PESS
+               AND SV.CD_PROGR_FORM = PF.CD_PROGR_FORM
+               AND SA.NU_MATR_CURSO = SV.NU_MATR_CURSO
+
+               AND BPSA.DT_DEF_SIT=(SELECT MAX(BPSA1.DT_DEF_SIT)
+                                    FROM SIGA_BLOCO_PERF_SIT_ACADEMICA BPSA1
+                                   WHERE BPSA1.NU_MATR_CURSO=BPSA.NU_MATR_CURSO
+                                     AND BPSA1.CD_PERD_LETV=BPSA.CD_PERD_LETV
+                                     AND BPSA1.CD_TP_SIT_ACAD IN (4, 21))
+               
+               AND STSA.CD_TP_SIT_ACAD = SA.CD_TP_SIT_ACAD
+               AND SA.CD_PERD_LETV = ''
+               
+               AND STV.CD_PERD_LETV = (SELECT MAX(TV.CD_PERD_LETV) FROM SIGA_TURNO_VINCULO TV
+                                          WHERE TV.NU_MATR_CURSO = SV.NU_MATR_CURSO
+                                          AND TV.CD_PERD_LETV <= SA.CD_PERD_LETV )
+               AND STV.CD_TURNO = ST.CD_TURNO
+               AND PF.CD_ORG = SO.CD_ORG
+               AND ((SO.CD_TP_ORG = 3) OR (SO.CD_TP_ORG = 14))
+               AND BPSA.NU_MATR_CURSO = SA.NU_MATR_CURSO
+               AND BPSA.CD_TP_SIT_ACAD= SA.CD_TP_SIT_ACAD
+               AND BPSA.DT_DEF_SIT = SA.DT_DEF_SIT
+               AND BPSA.CD_BLOCO_PERF = BP.CD_BLOCO_PERF
+       GROUP BY (PF.NM_PROGR_FORM,BP.DS_BLOCO_PERF)))      
+ORDER BY NM_PROGR_FORM_ORD,DS_BL_PERF,DS_TP_SIT_ACAD';
+
+    IF P_ANO_SEMESTRE IS NOT NULL THEN
+
+      P_ANO      := SUBSTR(P_ANO_SEMESTRE, 1, 4);
+      P_SEMESTRE := SUBSTR(P_ANO_SEMESTRE, 6, 1);
+
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+      V_SQL := REPLACE(V_SQL, '
+
+    END IF;
+
+    IF P_SEXO IS NOT NULL THEN
+      TEMP  := 'AND SP.NM_SEXO = ''' || P_SEXO || '''';
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_CURSO IS NOT NULL THEN
+      TEMP  := 'AND PF.CD_PROGR_FORM = ' || P_CURSO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TURNO IS NOT NULL THEN
+      TEMP  := 'AND ST.CD_TURNO = ' || P_TURNO;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+    IF P_TP_SIT_ACADEM IS NOT NULL THEN
+      TEMP  := 'AND STSA.CD_TP_SIT_ACAD  = ' || P_TP_SIT_ACADEM;
+      V_SQL := REPLACE(V_SQL, '
+    END IF;
+
+
+    OPEN INGR_REFCSR FOR V_SQL;
+
+
+    RETURN INGR_REFCSR;
+
+
+    CLOSE INGR_REFCSR;
+
+  END;
+
+
+
+BEGIN
+  
+  
+  NULL;
+  
+END PKG_CENSO;
+
+
